@@ -113,7 +113,7 @@ harmonic_arima <- ARIMA(sales ~ PDQ(0, 0, 0) + fourier(K = 2), stepwise = FALSE)
 models_1 <- train_set_1 %>%
   model(
     Arima = arima_,
-    Sarima = sarima
+    Sarima = sarima,
     Harmonic_Arima = harmonic_arima
   )
 ```
@@ -121,14 +121,14 @@ models_1 <- train_set_1 %>%
 models_2 <- train_set_2 %>%
   model(
     Arima = arima_,
-    Sarima = sarima
+    Sarima = sarima,
     Harmonic_Arima = harmonic_arima  )
 ```
 ```{r}
 models_3 <- train_set_3 %>%
   model(
     Arima = arima_,
-    Sarima = sarima
+    Sarima = sarima,
     Harmonic_Arima = harmonic_arima  )
 ```
 
