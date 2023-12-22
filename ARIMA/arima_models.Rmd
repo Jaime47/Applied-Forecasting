@@ -1,0 +1,154 @@
+---
+header-includes:
+- \usepackage{xcolor}
+- \usepackage{color} 
+- \usepackage{fancyhdr,color}
+- \usepackage{lipsum}
+- \fancyfoot[CE] {\thepage}
+title: "**Forecasting Final Project"
+subtitle: "Applied Forecasting in Complex Systems 2023"
+author: Jaime Pons
+date: "University of Amsterdam \n &nbsp; \n December 3, 2023 "
+output: 
+  bookdown::pdf_document2:
+    toc: false
+fontsize: 11pt
+highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  cache = TRUE,
+  dev.args = list(pointsize = 11)
+)
+options(digits = 3, width = 60)
+library(fpp3)
+library(latex2exp)
+```
+
+```{r}
+preprocess_csv <- function(csv) {
+  
+  data <- read.csv(csv)
+  data$date <- ymd(data$date)
+
+  tsibble <- data %>%
+  as_tsibble(index = date, key = item_id) %>%
+  select(
+    date,
+    item_id,
+    wday,
+    month,
+    year,
+    event_type_1,
+    event_type_2,
+    snap_TX,
+    sell_price,
+    sales
+  ) %>%
+  mutate(
+    wday = factor(wday),
+    month = factor(month),
+    event_type_1 = factor(event_type_1),
+    event_type_2 = factor(event_type_2)
+  )
+
+  return (tsibble)
+}
+```
+
+```{r}
+train_data <- preprocess_csv("train_data.csv")
+test_data <- preprocess_csv("test_data.csv")
+```
+
+```{r}
+restricted_set_1 <- train_data %>%
+  group_by(item_id) %>%
+  arrange(date) %>%
+  filter(date <= '2014-05-22')
+
+validation_set_1 <- restricted_set_1 %>%
+  slice_tail(n = 28) %>%
+  ungroup()
+
+train_set_1 <- setdiff(restricted_set_1, validation_set_1)
+```
+
+```{r}
+restricted_set_2 <- train_data %>%
+  group_by(item_id) %>%
+  arrange(date) %>%
+  filter(date <= '2015-05-22')
+
+validation_set_2 <- restricted_set_2 %>%
+  slice_tail(n = 28) %>%
+  ungroup()
+
+train_set_2 <- setdiff(restricted_set_2, validation_set_2)
+```
+
+```{r}
+validation_set_3 <- train_data %>%
+  group_by(item_id) %>%
+  arrange(date) %>%
+  slice_tail(n = 28) %>%
+  ungroup()
+train_set_3 <- setdiff(train_data, validation_set_3)
+```
+
+## Model:
+
+```{r}
+arima_ <- ARIMA(sales ~ PDQ(0, 0, 0), stepwise = FALSE)
+sarima <- ARIMA(sales ~ 0, stepwise = FALSE)
+harmonic_arima <- ARIMA(sales ~ PDQ(0, 0, 0) + fourier(K = 2), stepwise = FALSE)
+
+```
+
+```{r}
+models_1 <- train_set_1 %>%
+  model(
+    Arima = arima_,
+    Sarima = sarima
+    Harmonic_Arima = harmonic_arima
+  )
+```
+```{r}
+models_2 <- train_set_2 %>%
+  model(
+    Arima = arima_,
+    Sarima = sarima
+    Harmonic_Arima = harmonic_arima  )
+```
+```{r}
+models_3 <- train_set_3 %>%
+  model(
+    Arima = arima_,
+    Sarima = sarima
+    Harmonic_Arima = harmonic_arima  )
+```
+
+```{r}
+predictions_1 <- forecast(models_1, h = 28)
+predictions_2 <- forecast(models_2, h = 28)
+predictions_3 <- forecast(models_3, h = 28)
+```
+
+```{r}
+acc_1 <- accuracy(predictions_1, validation_set_1)
+acc_2 <- accuracy(predictions_2, validation_set_2)
+acc_3 <- accuracy(predictions_3, validation_set_3)
+acc = cbind(acc_1, acc_2, acc_3)
+```
+
+```{r}
+acc %>%
+  group_by(.model) %>%
+  summarise(avg = mean(RMSE),
+            min = min(RMSE),
+            max = max(RMSE))
+```
